@@ -435,14 +435,18 @@ test('an unknown rule set id is a 404 on read', async () => {
 test('statePayload reports a manifest override situation', () => {
   const data = fixture()
   try {
-    const overridden = { ...data.config, rulesFiles: ['C:/somewhere/explicit.md'] }
+    // The fixture path has to be absolute on the platform running the test: on Linux
+    // `C:/somewhere` is a relative path, so `path.isAbsolute` would refuse it and the
+    // entry would be resolved against the store directory instead.
+    const explicit = join(data.config.dshHome, 'explicit.md')
+    const overridden = { ...data.config, rulesFiles: [explicit] }
     const payload = statePayload(overridden)
     assert.equal(payload.ignoredBecauseOverride, true)
-    assert.deepEqual(payload.rulesFilesOverride, ['C:/somewhere/explicit.md'])
+    assert.deepEqual(payload.rulesFilesOverride, [explicit])
     // `rulesFiles` replaces the global store; the session file still follows it.
     assert.deepEqual(
       payload.effective.filter(entry => entry.scope === 'global').map(entry => entry.path),
-      ['C:/somewhere/explicit.md'],
+      [explicit],
     )
     assert.ok(payload.effective.length >= 1)
   } finally {

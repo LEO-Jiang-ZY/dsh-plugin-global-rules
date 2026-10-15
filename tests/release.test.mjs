@@ -124,11 +124,26 @@ test('the test runner adapts to the Node version instead of assuming one', () =>
 
 test('install.ps1 stays ASCII so Windows PowerShell 5.1 can parse it', () => {
   // PowerShell 5.1 reads a .ps1 without a byte-order mark as ANSI. Non-ASCII text then
-  // becomes mojibake, which breaks the parser rather than merely looking wrong.
+  // becomes mojibake, which breaks the parser rather than merely looking wrong. This is
+  // why the script's comments and messages are English while README.md carries the
+  // Chinese documentation.
+  //
+  // Line endings are deliberately NOT asserted here: `.gitattributes` pins `*.ps1` to
+  // CRLF, so a Windows checkout legitimately has them. The ASCII check is the whole
+  // point of this test.
   const text = readFileSync(join(root, 'install.ps1'), 'utf8')
   const nonAscii = [...text].filter(character => character.codePointAt(0) > 0x7f)
   assert.deepEqual(nonAscii, [], 'install.ps1 must remain ASCII-only')
-  assert.doesNotMatch(text, /\r\n/, 'the repository uses LF line endings')
+})
+
+test('.gitattributes fixes line endings instead of relying on each machine', () => {
+  // core.autocrlf is machine-specific, so without this file a Windows checkout rewrites
+  // every LF and produces whole-file diffs. The repository normalises to LF, and the
+  // Windows-only helper keeps CRLF because that is what Windows tooling expects.
+  const text = readFileSync(join(root, '.gitattributes'), 'utf8')
+  assert.match(text, /^\* text=auto eol=lf$/m, 'the default must normalise to LF')
+  assert.match(text, /^\*\.ps1 text eol=crlf$/m, 'install.ps1 keeps CRLF by design')
+  assert.match(text, /^\*\.sh text eol=lf$/m, 'shell scripts must never gain CRLF')
 })
 
 
