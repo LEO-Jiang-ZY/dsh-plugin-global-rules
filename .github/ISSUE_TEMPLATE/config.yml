@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 先看排障表
+    url: https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules#排障
+    about: 「规则没生效」「界面还是中文」「404」这类问题多半已有现成答案。

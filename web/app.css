@@ -1,0 +1,156 @@
+/* Rule-set editor. Plain CSS, no build step; tuned to sit beside the DSH Web UI. */
+:root {
+  color-scheme: light dark;
+  --ink: light-dark(#0f1115, #f9fafb);
+  --muted: light-dark(#61666b, #cfd3d6);
+  --tertiary: light-dark(#81858c, #adb2b8);
+  --surface: light-dark(#ffffff, #2b2c2e);
+  --raised: light-dark(#f6f7f9, #353638);
+  --line: light-dark(#0000001f, #ffffff29);
+  --hairline: light-dark(#0000000f, #ffffff14);
+  --accent: light-dark(#0f1115, #f9fafb);
+  --accent-ink: light-dark(#ffffff, #0f1115);
+  --ok: light-dark(#1a7f4b, #4ade80);
+  --warn: light-dark(#a35a00, #fbbf24);
+  --danger: light-dark(#b3261e, #f87171);
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: light-dark(#f4f5f7, #1f2021);
+  color: var(--ink);
+  font: 14px/1.6 "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+h1, h2 { margin: 0; font-weight: 600; }
+h1 { font-size: 15px; }
+h2 { font-size: 13px; color: var(--muted); letter-spacing: .02em; }
+code, pre, .counter, .value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* The DSH desktop window draws its own minimize/maximize/close controls in the
+   top right. This page's controls sit at the left of that same row and never
+   claim the reserved corner, so neither surface can swallow the other's clicks. */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  background: var(--surface); position: sticky; top: 0; z-index: 5;
+  /* Keep this row interactive: a drag region here would eat every button click. */
+  -webkit-app-region: no-drag;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.topbar-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar-actions .btn { -webkit-app-region: no-drag; }
+.status { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status[data-tone="ok"] { color: var(--ok); }
+.status[data-tone="warn"] { color: var(--warn); }
+.status[data-tone="error"] { color: var(--danger); }
+
+/* Reserve the window-control strip when the host app owns it. */
+body[data-host="desktop"] .topbar { padding-right: 168px; }
+@media (max-width: 720px) {
+  body[data-host="desktop"] .topbar { padding-right: 20px; }
+  .topbar { flex-wrap: wrap; }
+}
+
+.banner {
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+  font-size: 12.5px; color: var(--muted); background: var(--raised);
+}
+.banner.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.banner code { font-size: 12px; }
+
+.layout {
+  display: grid; gap: 16px; padding: 16px 20px 28px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-areas: "sidebar editor" "preview preview";
+  align-items: start;
+}
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "editor" "preview"; } }
+
+.sidebar, .editor, .preview {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.sidebar { grid-area: sidebar; overflow: hidden; }
+.editor { grid-area: editor; display: flex; flex-direction: column; padding: 16px; gap: 12px; }
+.preview { grid-area: preview; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 6px; }
+.hint { margin: 0 14px 8px; color: var(--tertiary); font-size: 12px; }
+
+.list { list-style: none; margin: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 4px; }
+.item {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
+  padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent;
+}
+.item:hover { background: var(--raised); }
+.item[aria-current="true"] { background: var(--raised); border-color: var(--line); }
+.item-main { min-width: 0; }
+.item-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.item-sub { display: block; color: var(--tertiary); font-size: 11px; }
+.item[data-enabled="false"] .item-title { color: var(--tertiary); text-decoration: line-through; }
+.item-actions { display: flex; align-items: center; gap: 2px; }
+.item-actions .btn { padding: 2px 6px; font-size: 12px; line-height: 1.2; }
+.item-note { color: var(--warn); font-size: 11px; }
+
+.sidebar-foot { border-top: 1px solid var(--hairline); padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.meta { display: flex; flex-direction: column; gap: 2px; }
+.meta-label { color: var(--tertiary); font-size: 11px; }
+.path, .value { font-size: 11px; word-break: break-all; color: var(--muted); }
+
+.editor-head { display: flex; align-items: flex-end; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field.grow { flex: 1; }
+.field-label { color: var(--muted); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.counter { color: var(--tertiary); font-size: 11px; }
+.input, .textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 10px; background: light-dark(#ffffff, #232425);
+  color: var(--ink); padding: 8px 10px; font: inherit;
+}
+.input:focus-visible, .textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.textarea { min-height: 340px; resize: vertical; line-height: 1.7; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+.dirty { color: var(--warn); font-size: 12px; }
+.actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+.btn {
+  font: inherit; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--raised); color: var(--ink); cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--tertiary); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: transparent; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+
+.preview-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.preview-head .value { margin-left: auto; }
+.pre {
+  margin: 0; padding: 14px; border-radius: 10px; border: 1px solid var(--hairline);
+  background: light-dark(#fafbfc, #232425); max-height: 420px; overflow: auto;
+  white-space: pre-wrap; word-break: break-word; font-size: 12.5px; line-height: 1.65;
+}
+
+/* In-page dialog (replaces window.confirm/prompt, which the app window cannot style
+   and a webview may suppress). */
+.modal {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center; padding: 24px;
+  background: light-dark(#0f111580, #000000a8);
+  -webkit-app-region: no-drag;
+}
+.modal[hidden] { display: none; }
+.modal-card {
+  width: min(460px, 100%); background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 14px; padding: 18px;
+  box-shadow: 0 12px 40px #00000033; display: flex; flex-direction: column; gap: 10px;
+}
+.modal-title { font-size: 15px; }
+.modal-text { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; word-break: break-word; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+

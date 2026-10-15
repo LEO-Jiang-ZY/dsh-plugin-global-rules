@@ -1,0 +1,67 @@
+{
+  "name": "dsh-plugin-global-rules",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A rule manager for DeepSeek Harness: injects your standing rules into the system prompt of every session, with global and per-workspace rule sets, an in-app Web editor, and live reload.",
+  "type": "module",
+  "license": "MIT",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./rules": "./lib/rules.js",
+    "./store": "./lib/store.js",
+    "./api": "./lib/api.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "web",
+    "tools",
+    "cordis.patch.yml",
+    "install.ps1",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node tools/run-tests.mjs",
+    "check:markup": "node tools/check-markup.mjs",
+    "verify": "node tools/run-tests.mjs && node tools/check-markup.mjs",
+    "release": "node tools/package-release.mjs",
+    "vendor": "node tools/vendor-cordis.mjs",
+    "serve": "node tools/serve-editor.mjs",
+    "inspect": "node tools/inspect-injection.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "rules",
+    "system-prompt",
+    "prompt-engineering",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules.git"
+  },
+  "homepage": "https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules#readme",
+  "bugs": {
+    "url": "https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

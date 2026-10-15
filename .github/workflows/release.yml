@@ -1,0 +1,122 @@
+name: Release
+
+# Publishes the archives a user downloads. Pushing a tag such as v1.0.0 builds the
+# zip and tar.gz, verifies them the same way a user would, and attaches them to the
+# release page.
+#
+# The archives are built from a clean checkout rather than from anything local, so a
+# release never carries a personal path or an extracted runtime.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)release, for example v1.0.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: The tag must match package.json
+        run: |
+          node -e "
+          const { readFileSync } = require('node:fs')
+          const tag = (process.env.TAG || '').replace(/^refs\/tags\//, '')
+          const version = JSON.parse(readFileSync('package.json', 'utf8')).version
+          if (tag !== 'v' + version) {
+            console.error('tag ' + tag + ' does not match package.json version ' + version)
+            process.exit(1)
+          }
+          console.log('releasing ' + tag)
+          "
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Run the test suite
+        run: node tools/run-tests.mjs
+
+      - name: Build the archives
+        run: node tools/package-release.mjs
+
+      # Verify the published artifact the way a user meets it: extract it somewhere
+      # else, then run its own tests. A corrupt release archive is the worst place to
+      # find out that packaging is broken.
+      - name: Verify the archives by extracting them
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/verify-zip /tmp/verify-tar
+          unzip -q dist/*.zip -d /tmp/verify-zip
+          tar -x -z -f dist/*.tar.gz -C /tmp/verify-tar
+          for dir in /tmp/verify-zip/* /tmp/verify-tar/*; do
+            echo "--- running the suite from $dir"
+            (cd "$dir" && node tools/run-tests.mjs)
+          done
+
+      - name: Check the checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum -c *.sha256
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.sha256
+          body: |
+            ## 安装
+
+            ### 方式一：在 DSH 里直接安装（推荐）
+
+            打开 DeepSeek Harness，在左侧栏选择「插件」，点击「添加插件」，把下面这一行粘进输入框：
+
+            ```
+            ${{ github.server_url }}/${{ github.repository }}
+            ```
+
+            然后点「安装」，完成后点「立即启用」。**需要重启一次 DSH** 才会加载进来。
+
+            ### 方式二：下载压缩包
+
+            下载本页下方的 `dsh-plugin-global-rules-*.zip`，解压到任意目录，然后把**解压后的目录绝对路径**
+            填进「添加插件」的输入框（或交给 `plugin_manager` 工具）。
+
+            ### 方式三：用 tar.gz 链接
+
+            「添加插件」也接受压缩包链接，可以直接粘贴：
+
+            ```
+            ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/dsh-plugin-global-rules-${{ github.event.inputs.tag || github.ref_name }}.tar.gz
+            ```
+
+            > 插件安装后暂不支持自动更新：升级需要先卸载再安装新版本。
+
+            详细说明见 [README](README.md)。
+
+      - name: Keep the archives as a workflow artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-plugin-global-rules-${{ github.event.inputs.tag || github.ref_name }}
+          path: dist/*
+          if-no-files-found: error

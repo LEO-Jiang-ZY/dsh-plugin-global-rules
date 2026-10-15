@@ -1,0 +1,101 @@
+name: CI
+
+# Runs the checks that do not need a DeepSeek Harness installation.
+# The integration tests boot the real prompt registry from a local DSH install and
+# skip themselves when it is absent, so no proprietary code is downloaded here.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Show the runtime
+        run: node --version
+
+      - name: Verify the plugin sources parse
+        run: |
+          node --check index.js
+          node --check lib/rules.js
+          node --check lib/store.js
+          node --check lib/api.js
+          node --check lib/client.js
+          node --check web/app.js
+          node --check tools/run-tests.mjs
+        shell: bash
+
+      - name: Check that the page markup and the script agree
+        run: node tools/check-markup.mjs
+
+      - name: Run the test suite
+        run: node tools/run-tests.mjs
+
+      - name: Check that the shipped bundle patch carries no config
+        shell: bash
+        run: |
+          # A config here cannot be overridden by the profile and once silently
+          # disabled every rule the manager saved.
+          if grep -Eq '^[[:space:]]+(rulesFiles|maxBytes|applyToSubagents):' cordis.patch.yml; then
+            echo "::error::cordis.patch.yml must not pin config; put it in the profile instead"
+            exit 1
+          fi
+          grep -q 'id: global-rules' cordis.patch.yml
+
+  package:
+    name: package contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: The install entry points must exist
+        run: |
+          node -e "
+          const { readFileSync, existsSync } = require('node:fs')
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+          const mustExist = ['index.js', 'lib/client.js', 'lib/api.js', 'lib/rules.js', 'lib/store.js',
+                             'web/index.html', 'web/app.js', 'web/app.css', 'cordis.patch.yml',
+                             'README.md', 'CHANGELOG.md', 'LICENSE']
+          const missing = mustExist.filter(file => !existsSync(file))
+          if (missing.length > 0) { console.error('missing:', missing.join(', ')); process.exit(1) }
+          for (const file of mustExist.slice(0, 8)) {
+            if (!pkg.files.some(entry => file === entry || file.startsWith(entry + '/'))) {
+              console.error('package.json files[] does not ship', file); process.exit(1)
+            }
+          }
+          if (pkg.dsh?.bundle?.patch !== './cordis.patch.yml') { console.error('bundle patch not wired'); process.exit(1) }
+          if (pkg.dsh?.client?.platform !== 'web') { console.error('client platform not wired'); process.exit(1) }
+          console.log('package metadata ok')
+          "
+
+      - name: No credentials or local paths may be committed
+        run: |
+          # Absolute personal paths and secrets have no business in a public repo.
+          if grep -rInE 'C:\\\\Users\\\\[A-Za-z0-9._-]+|/home/[a-z0-9._-]+/|sk-[A-Za-z0-9]{20,}' \
+               --include='*.js' --include='*.mjs' --include='*.json' --include='*.yml' --include='*.md' \
+               --exclude-dir=.git --exclude-dir=.vendor . ; then
+            echo "::error::a personal path or credential appears to be committed"
+            exit 1
+          fi
+          echo "no personal paths found"

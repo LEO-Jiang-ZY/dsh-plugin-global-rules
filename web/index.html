@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="title">规则管理器 · DeepSeek Harness</title>
+<link rel="stylesheet" href="/rules/app.css">
+</head>
+<body>
+<!--
+  Layout contract, learned from a real defect: this page is also embedded in the
+  DSH desktop window, whose own minimize/maximize/close controls occupy the top
+  right corner. Nothing interactive of ours may live there, and the header must
+  stay clickable rather than becoming part of the window drag region.
+-->
+<header class="topbar">
+  <div class="brand">
+    <span class="dot" aria-hidden="true"></span>
+    <h1 data-i18n="title">规则管理器</h1>
+  </div>
+  <div class="topbar-actions">
+    <span id="status" class="status" role="status" aria-live="polite" data-i18n="loading">正在读取…</span>
+    <button id="close" class="btn ghost" type="button" data-i18n="close" title="关闭（Esc）">关闭</button>
+    <button id="reload" class="btn ghost" type="button" data-i18n="reload">重新载入</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar" aria-label="scope list">
+    <div class="sidebar-head">
+      <h2 data-i18n="scopes">生效范围</h2>
+      <button id="addWorkspace" class="btn small" type="button" data-i18n-title="addWorkspaceHint">＋ 工作区</button>
+    </div>
+    <p class="hint" data-i18n="scopeHint">全局规则对所有工作区生效；工作区规则在其之上叠加。</p>
+    <ul id="scopes" class="list scope-list" role="list"></ul>
+
+    <div class="sidebar-head">
+      <h2 data-i18n="rulesets">规则集</h2>
+      <button id="add" class="btn small" type="button" data-i18n-title="newRulesetHint">＋ 新建</button>
+    </div>
+    <p class="hint" data-i18n="rulesetHint">按列表顺序拼接；关掉的规则集不会注入。</p>
+    <ul id="list" class="list" role="list"></ul>
+
+    <div class="sidebar-foot">
+      <div class="meta">
+        <span class="meta-label" data-i18n="storeRoot">存储位置</span>
+        <code id="storeDir" class="path">—</code>
+      </div>
+      <div class="meta">
+        <span class="meta-label" data-i18n="budget">注入预算</span>
+        <span id="budget" class="value">—</span>
+      </div>
+      <div class="meta">
+        <span class="meta-label" data-i18n="effective">当前注入</span>
+        <span id="effective" class="value">—</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="editor" aria-label="rule content">
+    <div id="overrideNotice" class="banner warn" hidden data-i18n="overrideNotice">
+      配置里设置了 rulesFiles，实际注入的是那些文件；本页改动不会生效。
+    </div>
+    <div id="emptyNotice" class="banner" hidden data-i18n="emptyNotice">
+      这个范围还没有规则集。点「＋ 新建」写下第一条规则。
+    </div>
+    <div id="scopeBanner" class="banner" hidden></div>
+
+    <div class="editor-head">
+      <label class="field">
+        <span class="field-label" data-i18n="name">名称</span>
+        <input id="title" class="input" type="text" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="toggle" data-i18n-title="enabledHint">
+        <input id="enabled" type="checkbox">
+        <span data-i18n="enabled">启用</span>
+      </label>
+    </div>
+    <label class="field grow">
+      <span class="field-label">
+        <span data-i18n="content">内容</span>
+        <span id="counter" class="counter">0</span>
+      </span>
+      <textarea id="content" class="textarea" spellcheck="false"></textarea>
+    </label>
+    <div class="dirty" id="dirty" hidden data-i18n="dirty">有未保存的改动</div>
+    <div class="actions">
+      <button id="save" class="btn primary" type="button" disabled data-i18n="save">保存并生效</button>
+      <button id="discard" class="btn" type="button" disabled data-i18n="discard">放弃修改</button>
+      <button id="dryrun" class="btn" type="button" data-i18n="dryrun">试运行预览</button>
+      <span class="spacer"></span>
+      <button id="remove" class="btn danger" type="button" disabled data-i18n="remove">删除此规则集</button>
+    </div>
+  </section>
+
+  <section id="previewPanel" class="preview" aria-label="preview" hidden>
+    <div class="preview-head">
+      <h2 data-i18n="preview">试运行预览</h2>
+      <span id="previewMeta" class="value"></span>
+      <button id="copyPreview" class="btn ghost small" type="button" data-i18n="copy">复制</button>
+      <button id="closePreview" class="btn ghost small" type="button" data-i18n="closePreview">关闭</button>
+    </div>
+    <p class="hint" data-i18n="previewHint">这是模型在下一个模型步会看到的完整分段（未写入任何文件）。</p>
+    <pre id="preview" class="pre glass"></pre>
+  </section>
+</main>
+
+<!-- In-page dialog. The editor runs inside the app window, where a native
+     window.confirm()/prompt() is a poor fit and a native close is not ours to
+     cancel; this one is styled, keyboard-driven, and cannot be blocked. -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle" class="modal-title"></h2>
+    <p id="modalText" class="modal-text"></p>
+    <input id="modalInput" class="input" type="text" autocomplete="off" spellcheck="false" hidden>
+    <div class="modal-actions">
+      <button id="modalCancel" class="btn" type="button" data-i18n="cancel">取消</button>
+      <button id="modalOk" class="btn primary" type="button" data-i18n="ok">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="closedHint" class="modal" hidden>
+  <div class="modal-card">
+    <h2 class="modal-title" data-i18n="closedTitle">编辑器已经在自己的标签页里</h2>
+    <p class="modal-text" data-i18n="closedText">
+      这个页面无法自行关闭。请直接关掉该标签页，或回到 DeepSeek Harness 继续工作。
+    </p>
+    <div class="modal-actions">
+      <button id="closedBack" class="btn" type="button" data-i18n="closedBack">返回上一页</button>
+      <button id="closedDismiss" class="btn primary" type="button" data-i18n="closedDismiss">继续编辑</button>
+    </div>
+  </div>
+</div>
+
+<script src="/rules/app.js"></script>
+</body>
+</html>

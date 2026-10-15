@@ -1,0 +1,31 @@
+# Test scratch output.
+.test-report.txt
+
+# Release archives, rebuilt by tools/package-release.mjs and published by CI.
+dist/
+
+# Local verification scratch: a throwaway DSH home and a headless-browser profile.
+.shot-home/
+.chrome-profile/
+docs/
+
+# The Cordis runtime extracted from a local DeepSeek Harness install, for the
+# integration tests. Machine-specific, and not this project's to redistribute.
+# Rebuild with: node tools/vendor-cordis.mjs
+.vendor/
+
+# Node / editors / OS
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# A DSH home created inside the checkout, and any local rule store.
+.dsh/
+rules/

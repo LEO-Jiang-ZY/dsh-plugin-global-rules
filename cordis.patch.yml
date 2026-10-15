@@ -1,0 +1,18 @@
+# Adds the global-rules row to the profile that selects this bundle.
+# It only inserts a row; it replaces no official DSH component.
+#
+# Deliberately carries NO config. Three reasons, each learned the hard way:
+#
+# 1. `rulesFiles` overrides the rule-set store. Setting it here (as an earlier
+#    version of this file did, pointing at the pre-store `<DSH_HOME>/global-rules.md`)
+#    made every rule the manager wrote invisible to the model.
+# 2. A relative path in `rulesFiles` resolves against the process working directory,
+#    not `$DSH_HOME`, so it quietly pointed at a file that did not exist.
+# 3. Defaults are already the desired behaviour, and a patch row cannot be
+#    overridden by the profile — putting a value here makes it authoritative.
+#
+# To customise, add config to the row in your profile's `cordis.patch.yml` instead;
+# the profile layer wins for anything this file leaves unset.
+- insert:
+    - id: global-rules
+      name: dsh-plugin-global-rules

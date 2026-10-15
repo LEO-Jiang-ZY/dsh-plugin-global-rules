@@ -1,0 +1,37 @@
+# Line endings and file types, fixed for everyone rather than left to each machine's
+# core.autocrlf setting. Without this, a Windows checkout turns every LF into CRLF,
+# which shows up as whole-file diffs and has broken shell-based CI steps before.
+#
+# Everything is normalised to LF in the repository.
+* text=auto eol=lf
+
+# Files that must keep LF even when checked out on Windows: a CRLF sneaking into a
+# shell step makes the script fail with "bad interpreter".
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows-only helpers. These are not run on other platforms, and CRLF is what the
+# Windows tools expect, so they deliberately differ from the default above.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary or generated content that must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary
+*.tgz binary
+
+# Keep diffs readable and reviewable.
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
