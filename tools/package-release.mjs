@@ -9,9 +9,12 @@
  * absolute path, or hand `plugin_manager` the `.tar.gz` URL. Nothing has to be built
  * first, because `lib/client.js` is written by hand rather than generated.
  *
- * The archives are produced by a real archiver (`Compress-Archive`, `tar`) rather than
- * a hand-rolled binary writer. A hand-written zip is easy to get subtly wrong, and a
- * corrupt release archive is the worst place to discover that.
+ * The archives are written by `tools/lib/zip.mjs` and `tools/lib/tar.mjs` rather than by
+ * a platform tool. Both reasons are concrete failures this project hit:
+ * `bsdtar -a -c -f out.zip` silently writes a *tar* on Linux, so the release asset was
+ * not a zip at all, and a hand-written zip with the wrong general purpose flags read as
+ * "split or spanned" to Windows' extractor. Doing the container here gives identical
+ * bytes everywhere and lets the output be verified locally.
  *
  * Usage: node tools/package-release.mjs [--out <dir>]
  */
@@ -19,7 +22,9 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawnSync } from 'node:child_process'
+
+import { buildTarGz } from './lib/tar.mjs'
+import { buildZip } from './lib/zip.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
@@ -75,61 +80,28 @@ function collect() {
   return files.sort()
 }
 
-/**
- * Run an external command, inheriting stdio.
- *
- * Stdio is inherited rather than piped on purpose: capturing another program's output
- * through a pipe is blocked in some sandboxes, while inheriting works everywhere.
- */
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { stdio: 'inherit', ...options })
-  if (result.error) throw result.error
-  if (result.status !== 0) {
-    throw new Error(`${command} exited with ${result.status}`)
-  }
-}
-
-/**
- * Copy the shipped files into a staging folder.
- *
- * Staging first is what gives both archives a single top-level directory, so
- * extracting one cannot scatter files into whatever directory is current.
- */
-function stage(target) {
-  mkdirSync(target, { recursive: true })
-  for (const file of collect()) {
-    const destination = join(target, file)
-    mkdirSync(dirname(destination), { recursive: true })
-    writeFileSync(destination, readFileSync(join(root, file)))
-  }
-}
-
 const files = collect()
 if (files.length === 0) throw new Error('nothing to package')
 
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
-const stageDir = join(outDir, '.stage')
-stage(join(stageDir, folderName))
+
+// One top-level folder inside both archives, so extracting one cannot scatter files
+// into whatever directory happens to be current.
+const entries = files.map(file => ({
+  name: `${folderName}/${file}`,
+  content: readFileSync(join(root, file)),
+}))
+
+// A fixed timestamp keeps the archives reproducible: two builds of the same commit
+// produce the same checksum, so a published checksum actually means something.
+const modified = new Date(Date.UTC(1980, 0, 1))
 
 const zipPath = join(outDir, `${folderName}.zip`)
-const isWindows = process.platform === 'win32'
-
-if (isWindows) {
-  // Compress-Archive is part of Windows PowerShell and writes a conventional zip.
-  run('powershell', [
-    '-NoProfile', '-NonInteractive', '-Command',
-    `Compress-Archive -LiteralPath '${join(stageDir, folderName)}' -DestinationPath '${zipPath}' -Force`,
-  ])
-} else {
-  // bsdtar writes zip when the destination name ends in .zip.
-  run('tar', ['-a', '-c', '-f', zipPath, '-C', stageDir, folderName])
-}
+writeFileSync(zipPath, buildZip(entries, { modified }))
 
 const tarPath = join(outDir, `${folderName}.tar.gz`)
-run('tar', ['-c', '-z', '-f', tarPath, '-C', stageDir, folderName])
-
-rmSync(stageDir, { recursive: true, force: true })
+writeFileSync(tarPath, buildTarGz(entries, { modified }))
 
 const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex')
 writeFileSync(join(outDir, `${folderName}.sha256`), [

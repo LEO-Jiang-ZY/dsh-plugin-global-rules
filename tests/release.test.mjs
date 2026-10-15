@@ -136,11 +136,18 @@ test('install.ps1 stays ASCII so Windows PowerShell 5.1 can parse it', () => {
   assert.deepEqual(nonAscii, [], 'install.ps1 must remain ASCII-only')
 })
 
-test('.gitattributes fixes line endings instead of relying on each machine', () => {
+test('.gitattributes fixes line endings instead of relying on each machine', (t) => {
   // core.autocrlf is machine-specific, so without this file a Windows checkout rewrites
   // every LF and produces whole-file diffs. The repository normalises to LF, and the
   // Windows-only helper keeps CRLF because that is what Windows tooling expects.
-  const text = readFileSync(join(root, '.gitattributes'), 'utf8')
+  //
+  // A release archive carries no `.gitattributes`, so this only applies to a checkout.
+  const attributes = join(root, '.gitattributes')
+  if (!existsSync(attributes)) {
+    t.skip('not a repository checkout')
+    return
+  }
+  const text = readFileSync(attributes, 'utf8')
   assert.match(text, /^\* text=auto eol=lf$/m, 'the default must normalise to LF')
   assert.match(text, /^\*\.ps1 text eol=crlf$/m, 'install.ps1 keeps CRLF by design')
   assert.match(text, /^\*\.sh text eol=lf$/m, 'shell scripts must never gain CRLF')
