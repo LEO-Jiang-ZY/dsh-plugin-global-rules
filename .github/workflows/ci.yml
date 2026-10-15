@@ -92,9 +92,16 @@ jobs:
       - name: No credentials or local paths may be committed
         run: |
           # Absolute personal paths and secrets have no business in a public repo.
-          if grep -rInE 'C:\\\\Users\\\\[A-Za-z0-9._-]+|/home/[a-z0-9._-]+/|sk-[A-Za-z0-9]{20,}' \
-               --include='*.js' --include='*.mjs' --include='*.json' --include='*.yml' --include='*.md' \
-               --exclude-dir=.git --exclude-dir=.vendor . ; then
+          # The pattern is assembled from fragments so that this file does not contain
+          # a personal-looking path itself and trip its own check. `me` and an
+          # angle-bracket name are allowed: both are placeholders, not real paths.
+          patterns='C:\\Users\\(?!me[\\/]|<)[A-Za-z0-9._-]+'
+          patterns="$patterns"'|/home/(?!runner/)[a-z0-9._-]+/'
+          patterns="$patterns"'|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}'
+          if grep -rInP "$patterns" \
+               --include='*.js' --include='*.mjs' --include='*.json' --include='*.yml' \
+               --include='*.yaml' --include='*.md' --include='*.ps1' --include='*.html' \
+               --exclude-dir=.git --exclude-dir=.vendor --exclude-dir=node_modules . ; then
             echo "::error::a personal path or credential appears to be committed"
             exit 1
           fi

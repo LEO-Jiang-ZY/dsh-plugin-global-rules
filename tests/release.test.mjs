@@ -86,12 +86,17 @@ test('the shipped bundle patch carries no config', () => {
 })
 
 test('no personal path or credential is committed', () => {
-  const personal = [
-    /C:\\Users\\(?!<)[A-Za-z0-9._-]+/i,     // an absolute Windows user profile
-    /\/home\/(?!<)[a-z0-9._-]+\//i,          // an absolute POSIX home
-    /\bsk-[A-Za-z0-9]{20,}\b/,               // an API key shape
-    /\bghp_[A-Za-z0-9]{20,}\b/,              // a GitHub token shape
-  ]
+  // The regexes are assembled from fragments on purpose. Writing them as literals
+  // would put a personal-looking path in this file, and this file is one of the files
+  // being scanned, so the check would report itself. Keeping the literals out means
+  // the scan can cover everything, with no exemption list to forget to update.
+  const WINDOWS_PROFILE = new RegExp('C:\\\\Users\\\\' + '(?!me[\\\\/]|<)[A-Za-z0-9._-]+', 'i')
+  const POSIX_HOME = new RegExp('/home/' + '(?!runner/)[a-z0-9._-]+/', 'i')
+  const API_KEY = new RegExp('\\bsk-' + '[A-Za-z0-9]{20,}\\b')
+  const CLASSIC_TOKEN = new RegExp('\\bghp_' + '[A-Za-z0-9]{20,}\\b')
+  const FINE_GRAINED_TOKEN = new RegExp('\\bgithub_pat_' + '[A-Za-z0-9_]{20,}\\b')
+  const personal = [WINDOWS_PROFILE, POSIX_HOME, API_KEY, CLASSIC_TOKEN, FINE_GRAINED_TOKEN]
+
   const offenders = []
   for (const file of trackedFiles()) {
     if (!/\.(js|mjs|json|yml|yaml|md|ps1|html|css)$/i.test(file)) continue
@@ -102,6 +107,19 @@ test('no personal path or credential is committed', () => {
     }
   }
   assert.deepEqual(offenders, [], 'a public repository must not carry local paths or secrets')
+})
+
+test('the test runner adapts to the Node version instead of assuming one', () => {
+  // `--test-isolation=none` arrived in Node 24. Passing it on Node 22 makes the runner
+  // exit with code 9 before a single test runs, which CI reported as a plain "bad
+  // option". package.json allows Node 22, so the flag has to be conditional.
+  const runner = readFileSync(join(root, 'tools/run-tests.mjs'), 'utf8')
+  assert.match(runner, /process\.versions\.node/, 'the runner must inspect the runtime version')
+  assert.match(runner, /--test-isolation=none/, 'the sandbox-friendly mode must still be available')
+
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const minimum = Number(String(pkg.engines?.node ?? '').replace(/[^\d]/g, '').slice(0, 2))
+  assert.ok(minimum >= 22, 'the declared Node floor must be the version the code supports')
 })
 
 test('install.ps1 stays ASCII so Windows PowerShell 5.1 can parse it', () => {
