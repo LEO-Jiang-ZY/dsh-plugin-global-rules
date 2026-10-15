@@ -73,21 +73,23 @@ github:LEO-Jiang-ZY/dsh-plugin-global-rules#v1.0.0
 
 适合网络到不了 GitHub 的情况，也是最可控的方式。
 
-1. 到本仓库的 Releases 页，下载 `dsh-plugin-global-rules-v1.0.0.zip`
+1. 打开 [Releases 页](https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/releases/latest)，
+   下载里面的 `dsh-plugin-global-rules-v<版本号>.zip`
 2. 解压到任意目录，例如 `C:\Users\<你>\plugins\`
 3. 在「添加插件」的输入框里填解压后那个目录的绝对路径：
 
 ```
-C:\Users\<你>\plugins\dsh-plugin-global-rules-v1.0.0
+C:\Users\<你>\plugins\dsh-plugin-global-rules-v<版本号>
 ```
 
-压缩包里有一个顶层目录，解压不会把文件散落到当前目录。
+压缩包里有一个顶层目录，解压不会把文件散落到当前目录。同一个 Release 里还有
+`.tar.gz` 与 `.sha256`，后者可用来校验下载是否完整。
 
 也可以不改动 DSH 的任何配置，只把插件装到磁盘上：
 
 ```powershell
 # 已经下载了 zip 的情况下
-.\install.ps1 -From .\dsh-plugin-global-rules-v1.0.0.zip
+.\install.ps1 -From .\dsh-plugin-global-rules-v<版本号>.zip
 
 # 或者让脚本自己去 Releases 页取（需要能访问 GitHub）
 .\install.ps1 -Repo LEO-Jiang-ZY/dsh-plugin-global-rules
@@ -98,11 +100,22 @@ C:\Users\<你>\plugins\dsh-plugin-global-rules-v1.0.0
 
 ### 方式三：粘贴 tar.gz 直链
 
-「添加插件」也接受压缩包链接。把 Release 里的 `tar.gz` 直链粘进输入框即可：
+「添加插件」也接受压缩包链接。把 Release 里 `tar.gz` 资产的下载地址粘进输入框即可。
+这个地址形如：
 
 ```
-https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/releases/latest/download/dsh-plugin-global-rules-v1.0.0.tar.gz
+https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/releases/download/v<版本号>/dsh-plugin-global-rules-v<版本号>.tar.gz
 ```
+
+以当前版本 v1.0.0 为例，可以直接用这一条：
+
+```
+https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/releases/download/v1.0.0/dsh-plugin-global-rules-v1.0.0.tar.gz
+```
+
+> 地址里必须写确切的文件名，不能用通配符，所以每个版本都要换成对应的版本号。
+> 在 [Releases 页](https://github.com/LEO-Jiang-ZY/dsh-plugin-global-rules/releases/latest)
+> 右键点该资产的「下载」即可复制到当前版本的准确地址。
 
 这个方式同样需要能访问 GitHub，好处是不用自己解压。
 
