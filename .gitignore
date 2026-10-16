@@ -1,6 +1,10 @@
 # Test scratch output.
 .test-report.txt
 
+# Scratch files used to pass a multi-line commit message. One of these was committed
+# by mistake, which is exactly what an ignore rule prevents.
+.commit-msg.txt
+
 # Release archives, rebuilt by tools/package-release.mjs and published by CI.
 dist/
 
