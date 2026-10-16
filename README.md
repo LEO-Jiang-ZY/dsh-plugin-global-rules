@@ -100,7 +100,7 @@ C:\Users\<你>\plugins\dsh-plugin-global-rules-v<版本号>
 ```
 
 脚本会完成三件事：下载、解压到 `~/.dsh/plugins`、打印接下来要填进对话框的路径。
-它不改动任何 DSH 配置文件，安装动作仍然由你在界面里确认。
+
 
 ### 方式三：粘贴 tar.gz 直链
 
@@ -455,14 +455,10 @@ node tools/adopt-legacy.mjs "$env:USERPROFILE\.dsh" --dry-run
 
 ```bash
 node tools/vendor-cordis.mjs      # 可选。从本机安装提取真实 Cordis 运行时，写入 .vendor/，已 gitignore
-npm run verify                    # 跑全部测试，加页面标记校验与双语文档结构校验
+npm run verify                    # 跑全部测试，加页面标记校验
 node tools/package-release.mjs    # 构建 Release 用的 zip 与 tar.gz
 node tools/serve-editor.mjs 8799 <dshHome>   # 在临时端口独立跑编辑器，便于手工验收
 ```
-
-本 README 用两个语言块承载同一份文档。`tools/check-readme.mjs` 检查它们的结构一致性：
-两侧章节数是否相同、内部锚点是否都存在、代码块是否闭合。改动其中一侧后请跑一次，
-否则另一侧会慢慢失真。
 
 ### 测试
 
@@ -483,14 +479,12 @@ npm test        # 149 项
 发行前的仓库卫生检查，含安装入口是否齐全、`package.json` 是否声明了组合包、
 自带补丁是否没有写配置、仓库里是否混入个人路径或密钥、
 `install.ps1` 是否保持纯 ASCII；
-压缩包格式检查，含魔数、中央目录偏移、每个条目的 CRC，并用系统解压器做真实往返；
 以及真实装配用例：装载官方 `SystemPrompt` 服务，验证规则分段排在
 harness 身份与人设之后、所有工具分段之前。未提取运行时时这些用例自动跳过。
 
-`tools/run-tests.mjs` 默认使用 `--test-isolation=none`，让所有用例在单个进程内跑完。
-`node --test` 默认会为每个文件 fork 子进程并使用管道 stdio，在某些沙箱里会以 `EPERM` 失败，
-即使传 `stdio: 'inherit'` 也一样，因为 fork 的是测试运行器本身。该选项在 Node 24 才有，
-执行器会按运行时版本决定是否加上它。
+`tools/run-tests.mjs` 自带 `--test-isolation=none`。`node --test` 默认会为每个文件 fork
+子进程并使用管道 stdio，在某些沙箱里会以 `EPERM` 失败，
+即使传 `stdio: 'inherit'` 也一样，因为 fork 的是测试运行器本身。
 
 ---
 
@@ -521,10 +515,9 @@ harness 身份与人设之后、所有工具分段之前。未提取运行时时
 它是从你自己机器上的 DSH 安装里提取的运行时，仅供集成测试使用，已 gitignore，
 从不随本项目分发。
 
-压缩包在 `tools/lib/` 下自行写入，不调用任何平台打包器。原因是两条踩过的坑：
-`bsdtar -a -c -f out.zip` 在 Linux 上写出的其实是 tar，只是扩展名叫 zip；
-而手写 zip 若把通用标志位设错，Windows 解压器会判为「拆分或跨区的存档」。
-自己写容器让三个平台产出同样的字节，也能在本地用系统解压器验证。
+发行包用真实打包器生成。`tools/package-release.mjs` 调用 `Compress-Archive` 与 `tar`，
+而不是手写二进制格式。手写 zip 很容易出现细微错误，而发行压缩包损坏是最糟糕的发现时机。
+构建脚本会先解压再跑一遍测试来验证产物。
 
 ---
 

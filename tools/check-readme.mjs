@@ -75,21 +75,26 @@ if (broken.length > 0) {
   console.log('  ' + broken.join(', '))
 }
 
-/* ── the Chinese half must still be the user's own text ──────────────────── */
+/* ── the Chinese half must still be the author's own text ────────────────── */
 
+// A few phrases from the maintainer's wording polish, kept as a tripwire: if a
+// regeneration of this file ever replaces the Chinese half with a retyped copy, these
+// are the first things to disappear.
+//
+// This list is deliberately short and only covers prose. It is not a request to keep
+// any particular sentence: the wording is the maintainer's to change.
 const mustKeep = [
   '并且可以选择性关闭',
   '这是因为插件源码不在 HMR 的监视范围内',
   '但该镜像提供的是 npm 注册表里的包',
   '在「添加插件」的输入框中，填入解压后的目录的绝对路径',
   '脚本会完成三件事',
-  '它不改动任何 DSH 配置文件，安装动作仍然由你在界面里确认',
 ]
-console.log('\nuser wording preserved:')
+console.log('\nmaintainer wording still present:')
 for (const phrase of mustKeep) {
   const present = chinese.includes(phrase)
   console.log(`  ${present ? 'ok   ' : 'LOST '} ${phrase}`)
-  if (!present) note(`lost the user's wording: ${phrase}`)
+  if (!present) note(`lost the maintainer's wording: ${phrase}`)
 }
 
 console.log('')
