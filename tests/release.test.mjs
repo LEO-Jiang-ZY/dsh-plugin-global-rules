@@ -38,6 +38,7 @@ test('the install entry points a release must carry all exist', () => {
     'web/app.js',
     'web/app.css',
     'README.md',
+    'README.en.md',
     'LICENSE',
     'CHANGELOG.md',
     'install.ps1',
@@ -153,6 +154,38 @@ test('.gitattributes fixes line endings instead of relying on each machine', (t)
   assert.match(text, /^\*\.sh text eol=lf$/m, 'shell scripts must never gain CRLF')
 })
 
+
+test('the documentation is one file per language, cross-linked', () => {
+  // Keeping both languages in one file produced a page over a thousand lines long. The
+  // pair is now two files; this checks the split held, since a half-moved file leaves
+  // readers on a page with no way to reach the other language.
+  const chinese = readFileSync(join(root, 'README.md'), 'utf8')
+  const english = readFileSync(join(root, 'README.en.md'), 'utf8')
+
+  assert.match(chinese, /\[English\]\(README\.en\.md\)/, 'the Chinese file links to the English one')
+  assert.match(english, /\[中文\]\(README\.md\)/, 'the English file links back to the Chinese one')
+
+  // Each language must stay in its own file: an English heading in README.md means the
+  // split is leaking, and the Chinese half must never be dropped.
+  assert.ok(/[\u4e00-\u9fff]/.test(chinese), 'README.md must carry the Chinese text')
+  assert.ok(!/^## Contents$/m.test(chinese), 'README.md must not contain the English table of contents')
+
+  // The two halves must describe the same document.
+  const sections = text => (text.match(/^## /gm) ?? []).length
+  assert.equal(sections(chinese), sections(english), 'both languages must have the same sections')
+
+  // A stale test count is the easiest documentation error to make.
+  const declared = trackedFiles()
+    .filter(file => file.startsWith('tests/') && file.endsWith('.test.mjs'))
+    .reduce((sum, file) => {
+      const source = readFileSync(join(root, file), 'utf8')
+      return sum + (source.match(/^test\(/gm) ?? []).length + (source.match(/^testCase\(/gm) ?? []).length
+    }, 0)
+  for (const [file, text] of [['README.md', chinese], ['README.en.md', english]]) {
+    const badge = Number(text.match(/tests-(\d+)%20passing/)?.[1])
+    assert.equal(badge, declared, `${file} badge must match the ${declared} declared tests`)
+  }
+})
 
 test('the release builder ships every file a fresh clone would need', () => {
   const source = readFileSync(join(root, 'tools/package-release.mjs'), 'utf8')

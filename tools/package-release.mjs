@@ -45,6 +45,7 @@ const INCLUDE = [
   'tools',
   'tests',
   'README.md',
+  'README.en.md',
   'CHANGELOG.md',
   'CONTRIBUTING.md',
   'LICENSE',
