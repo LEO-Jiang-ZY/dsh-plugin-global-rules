@@ -29,7 +29,8 @@
   "scripts": {
     "test": "node tools/run-tests.mjs",
     "check:markup": "node tools/check-markup.mjs",
-    "verify": "node tools/run-tests.mjs && node tools/check-markup.mjs",
+    "check:readme": "node tools/check-readme.mjs",
+    "verify": "node tools/run-tests.mjs && node tools/check-markup.mjs && node tools/check-readme.mjs",
     "release": "node tools/package-release.mjs",
     "vendor": "node tools/vendor-cordis.mjs",
     "serve": "node tools/serve-editor.mjs",
